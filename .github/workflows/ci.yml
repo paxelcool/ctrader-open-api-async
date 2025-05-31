@@ -26,32 +26,24 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install ".[dev,test]"
+        pip uninstall ctrader-open-api -y || true
+        pip install -e ".[dev,test]"
     
     - name: Lint with ruff
       run: |
-        ruff check .
+        ruff check ctrader_open_api_async/ tests/ examples/
     
     - name: Format check with black
       run: |
-        black --check .
+        black --check ctrader_open_api_async/ tests/ examples/
     
     - name: Type check with mypy
       run: |
         mypy ctrader_open_api_async
-      continue-on-error: true
     
     - name: Test with pytest
       run: |
-        pytest tests/ --cov=ctrader_open_api_async --cov-report=xml --cov-report=term-missing -v
-    
-    - name: Upload coverage to Codecov
-      uses: codecov/codecov-action@v3
-      with:
-        file: ./coverage.xml
-        flags: unittests
-        name: codecov-umbrella
-      if: matrix.python-version == '3.9'
+        pytest tests/ --cov=ctrader_open_api_async --cov-report=term-missing -v
 
   build:
     needs: test
@@ -64,7 +56,7 @@ jobs:
     - name: Set up Python
       uses: actions/setup-python@v4
       with:
-        python-version: "3.11"
+        python-version: "3.9"
     
     - name: Install build dependencies
       run: |
@@ -72,16 +64,13 @@ jobs:
         pip install build twine
     
     - name: Build package
-      run: |
-        python -m build
+      run: python -m build
     
     - name: Check package
-      run: |
-        twine check dist/*
+      run: twine check dist/*
     
     - name: Publish to PyPI
       env:
         TWINE_USERNAME: __token__
         TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
-      run: |
-        twine upload dist/* 
+      run: twine upload dist/* 

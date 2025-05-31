@@ -24,6 +24,7 @@ pip install ctrader-open-api-async
 ```
 
 Для разработки:
+
 ```bash
 pip install ctrader-open-api-async[dev]
 ```
@@ -78,6 +79,7 @@ if __name__ == "__main__":
 ### Основные классы
 
 #### AsyncClient
+
 Основной класс для взаимодействия с API:
 
 ```python
@@ -90,6 +92,7 @@ await client.disconnect()
 ```
 
 #### Protobuf
+
 Утилиты для работы с protobuf сообщениями:
 
 ```python
@@ -105,6 +108,7 @@ message = Protobuf.create_message(message_type, **kwargs)
 ### Примеры использования
 
 #### Получение символов
+
 ```python
 async def get_symbols(client, account_id):
     request = ProtoOASymbolsListReq()
@@ -115,6 +119,7 @@ async def get_symbols(client, account_id):
 ```
 
 #### Размещение ордера
+
 ```python
 async def place_order(client, account_id, symbol_id, volume, order_type):
     request = ProtoOANewOrderReq()
@@ -129,6 +134,7 @@ async def place_order(client, account_id, symbol_id, volume, order_type):
 ```
 
 #### Подписка на события
+
 ```python
 async def subscribe_to_spots(client, account_id, symbol_ids):
     request = ProtoOASubscribeSpotsReq()
@@ -148,6 +154,7 @@ async def subscribe_to_spots(client, account_id, symbol_ids):
 ## 🔧 Разработка
 
 ### Настройка окружения
+
 ```bash
 git clone https://github.com/paxelcool/ctrader-open-api-async.git
 cd ctrader-open-api-async
@@ -159,17 +166,20 @@ pip install -e .[dev]
 ```
 
 ### Запуск тестов
+
 ```bash
 pytest
 ```
 
 ### Форматирование кода
+
 ```bash
 black .
 ruff check .
 ```
 
 ### Проверка типов
+
 ```bash
 mypy ctrader_open_api_async
 ```
@@ -211,4 +221,4 @@ mypy ctrader_open_api_async
 
 - [cTrader Open API Documentation](https://help.ctrader.com/open-api/)
 - [Оригинальная библиотека OpenApiPy](https://github.com/spotware/OpenApiPy)
-- [Python asyncio документация](https://docs.python.org/3/library/asyncio.html) 
+- [Python asyncio документация](https://docs.python.org/3/library/asyncio.html)

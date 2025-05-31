@@ -5,7 +5,9 @@
 ## 📋 Список примеров
 
 ### 🚀 [basic_usage.py](basic_usage.py)
+
 Базовый пример, демонстрирующий:
+
 - Подключение к API
 - Аутентификацию приложения
 - Получение списка аккаунтов
@@ -16,11 +18,13 @@
 ## 🔧 Подготовка к запуску
 
 ### 1. Установка библиотеки
+
 ```bash
 pip install ctrader-open-api-async
 ```
 
 ### 2. Получение учетных данных
+
 Для работы с примерами вам понадобятся:
 
 - **Client ID** - ID вашего приложения
@@ -30,6 +34,7 @@ pip install ctrader-open-api-async
 Получить их можно в [cTrader Developer Portal](https://ctrader.com/developer).
 
 ### 3. Настройка примеров
+
 Откройте файл примера и замените следующие значения:
 
 ```python
@@ -42,6 +47,7 @@ IS_LIVE = False                       # True для live, False для demo
 ## 🚀 Запуск примеров
 
 ### Базовый пример
+
 ```bash
 python examples/basic_usage.py
 ```
@@ -49,6 +55,7 @@ python examples/basic_usage.py
 ## 📖 Что демонстрируют примеры
 
 ### Подключение и аутентификация
+
 ```python
 # Создание клиента
 client = AsyncClient(host, port)
@@ -64,6 +71,7 @@ response = await client.send_request(auth_request)
 ```
 
 ### Получение данных
+
 ```python
 # Получение аккаунтов
 accounts_request = ProtoOAGetAccountListByAccessTokenReq()
@@ -77,6 +85,7 @@ symbols = await client.send_request(symbols_request)
 ```
 
 ### Подписка на события
+
 ```python
 # Подписка на спот цены
 spots_request = ProtoOASubscribeSpotsReq()
@@ -120,4 +129,4 @@ logging.basicConfig(level=logging.DEBUG)
 
 - [cTrader Developer Portal](https://ctrader.com/developer)
 - [cTrader Open API Documentation](https://help.ctrader.com/open-api/)
-- [Protobuf Messages Reference](https://help.ctrader.com/open-api/messages/) 
+- [Protobuf Messages Reference](https://help.ctrader.com/open-api/messages/)
