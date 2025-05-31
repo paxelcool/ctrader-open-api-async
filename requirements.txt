@@ -1,0 +1,41 @@
+# cTrader Open API Async - Зависимости
+
+# Основные зависимости для async/await реализации
+aiohttp
+websockets
+protobuf
+
+# Для работы с SSL/TLS
+cryptography
+pyOpenSSL
+service-identity
+
+# Для HTTP запросов
+requests
+urllib3
+
+# Для работы с JSON и данными
+orjson
+
+# Для типизации
+typing-extensions
+
+# Для тестирования
+pytest
+pytest-asyncio
+
+# Для разработки (опционально)
+black
+mypy
+
+# Для анализа данных (опционально)
+pandas>=1.5.0
+numpy>=1.21.0
+
+# Twisted для совместимости (если нужно)
+twisted>=22.0.0
+automat>=20.2.0
+constantly>=15.1.0
+hyperlink>=21.0.0
+incremental>=21.3.0
+zope.interface>=5.4.0 

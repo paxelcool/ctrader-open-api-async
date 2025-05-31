@@ -1,0 +1,18 @@
+include README.md
+include LICENSE
+include requirements.txt
+include pyproject.toml
+recursive-include ctrader_open_api_async *.py
+recursive-include ctrader_open_api_async/messages *.py
+exclude .DS_Store
+exclude .cursorignore
+exclude credentials.json
+exclude tokens.json
+exclude settings.json
+exclude test_*.py
+exclude test_*.json
+recursive-exclude .venv *
+recursive-exclude __pycache__ *
+recursive-exclude *.pyc
+recursive-exclude .pytest_cache *
+recursive-exclude .mypy_cache * 
