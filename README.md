@@ -14,6 +14,7 @@ Async/await версия Python библиотеки для взаимодейс
 - 📦 **Простая установка** - доступен через pip
 - 🔄 **Полная совместимость** - поддерживает все функции оригинального API
 - 🛡️ **Типизация** - полная поддержка type hints
+- 🔐 **OAuth авторизация** - полная поддержка OAuth 2.0 потока согласно документации cTrader
 - 📚 **Подробная документация** - примеры и руководства
 - 🧪 **Тестирование** - покрыт тестами с pytest-asyncio
 
@@ -29,50 +30,71 @@ pip install ctrader-open-api-async
 pip install ctrader-open-api-async[dev]
 ```
 
-## 🚀 Быстрый старт
+## 🔐 OAuth авторизация
+
+⚠️ **ВАЖНО**: Начиная с версии 2.0.0, библиотека полностью поддерживает OAuth 2.0 авторизацию согласно [официальной документации cTrader](https://help.ctrader.com/open-api/account-authentication/).
+
+### Настройка приложения
+
+1. Зайдите на [cTrader ID Portal](https://id.ctrader.com/)
+2. Создайте новое приложение в разделе "Applications"
+3. Добавьте redirect URI: `http://localhost:8080/auth/callback` (для локальной разработки)
+4. Скопируйте Client ID и Client Secret
+
+### Полный пример OAuth авторизации
 
 ```python
 import asyncio
-from ctrader_open_api_async import AsyncClient, EndPoints
-from ctrader_open_api_async.messages.OpenApiCommonMessages_pb2 import *
-from ctrader_open_api_async.messages.OpenApiMessages_pb2 import *
+from ctrader_open_api_async import AsyncClient, AsyncAuth, EndPoints
 
-async def main():
-    # Выбор хоста (Live или Demo)
-    host_type = "demo"  # или "live"
-    host = EndPoints.PROTOBUF_LIVE_HOST if host_type == "live" else EndPoints.PROTOBUF_DEMO_HOST
+async def oauth_example():
+    # Настройки OAuth
+    CLIENT_ID = "your_client_id"
+    CLIENT_SECRET = "your_client_secret"
+    REDIRECT_URI = "http://localhost:8080/auth/callback"
     
-    # Создание клиента
-    client = AsyncClient(host, EndPoints.PROTOBUF_PORT)
-    
-    try:
-        # Подключение
-        await client.connect()
-        print("Подключено к cTrader Open API")
+    # 1. OAuth авторизация
+    async with AsyncAuth(CLIENT_ID, CLIENT_SECRET, REDIRECT_URI) as auth:
+        # Получаем URL для авторизации
+        auth_url = auth.get_auth_uri(scope="trading")
+        print(f"Перейдите по ссылке: {auth_url}")
         
+        # Пользователь авторизуется и вводит код
+        auth_code = input("Введите код авторизации: ")
+        
+        # Обмениваем код на токен
+        token_data = await auth.get_token(auth_code)
+        access_token = token_data['access_token']
+    
+    # 2. Подключение к API
+    host = EndPoints.PROTOBUF_DEMO_HOST  # или PROTOBUF_LIVE_HOST
+    
+    async with AsyncClient(host, EndPoints.PROTOBUF_PORT) as client:
         # Аутентификация приложения
-        auth_request = ProtoOAApplicationAuthReq()
-        auth_request.clientId = "your_client_id"
-        auth_request.clientSecret = "your_client_secret"
-        
-        response = await client.send_request(auth_request)
-        print(f"Аутентификация успешна: {response}")
+        await client.send_application_auth_req(CLIENT_ID, CLIENT_SECRET)
         
         # Получение аккаунтов
-        accounts_request = ProtoOAGetAccountListByAccessTokenReq()
-        accounts_request.accessToken = "your_access_token"
+        accounts_response = await client.send_get_account_list_by_access_token_req(access_token)
+        accounts = list(accounts_response.ctidTraderAccount)
         
-        accounts_response = await client.send_request(accounts_request)
-        print(f"Аккаунты: {accounts_response}")
+        # Авторизация торгового аккаунта
+        account_id = accounts[0].ctidTraderAccountId
+        await client.send_account_auth_req(account_id, access_token)
         
-    except Exception as e:
-        print(f"Ошибка: {e}")
-    finally:
-        await client.disconnect()
+        # Получение информации о трейдере
+        trader_response = await client.send_trader_req(account_id)
+        print(f"Баланс: {trader_response.trader.balance}")
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    asyncio.run(oauth_example())
 ```
+
+## 🚀 Быстрый старт
+
+Для полного понимания OAuth процесса смотрите примеры в папке `examples/`:
+
+- `oauth_auth_example.py` - полный автоматический пример с локальным сервером
+- `simple_oauth_example.py` - упрощенный пример с ручным вводом кода
 
 ## 📖 Документация
 
@@ -85,24 +107,22 @@ if __name__ == "__main__":
 ```python
 from ctrader_open_api_async import AsyncClient
 
-client = AsyncClient(host, port)
-await client.connect()
-response = await client.send_request(request)
-await client.disconnect()
+async with AsyncClient(host, port) as client:
+    response = await client.send_application_auth_req(client_id, client_secret)
+    # ... другие операции
 ```
 
-#### Protobuf
+#### AsyncAuth
 
-Утилиты для работы с protobuf сообщениями:
+Класс для OAuth авторизации:
 
 ```python
-from ctrader_open_api_async import Protobuf
+from ctrader_open_api_async import AsyncAuth
 
-# Извлечение данных из сообщения
-data = Protobuf.extract(message)
-
-# Создание сообщения
-message = Protobuf.create_message(message_type, **kwargs)
+async with AsyncAuth(client_id, client_secret, redirect_uri) as auth:
+    auth_url = auth.get_auth_uri(scope="trading")
+    token_data = await auth.get_token(auth_code)
+    access_token = token_data['access_token']
 ```
 
 ### Примеры использования
@@ -111,44 +131,38 @@ message = Protobuf.create_message(message_type, **kwargs)
 
 ```python
 async def get_symbols(client, account_id):
-    request = ProtoOASymbolsListReq()
-    request.ctidTraderAccountId = account_id
-    
-    response = await client.send_request(request)
-    return response.symbol
+    response = await client.send_symbols_list_req(account_id)
+    return list(response.symbol)
 ```
 
 #### Размещение ордера
 
 ```python
-async def place_order(client, account_id, symbol_id, volume, order_type):
-    request = ProtoOANewOrderReq()
-    request.ctidTraderAccountId = account_id
-    request.symbolId = symbol_id
-    request.orderType = order_type
-    request.tradeSide = ProtoOATradeSide.BUY
-    request.volume = volume
-    
-    response = await client.send_request(request)
+async def place_order(client, account_id, symbol_id, volume):
+    response = await client.send_new_order_req(
+        ctid_trader_account_id=account_id,
+        symbol_id=symbol_id,
+        order_type=ProtoOAOrderType.MARKET,
+        trade_side=ProtoOATradeSide.BUY,
+        volume=volume
+    )
     return response
 ```
 
-#### Подписка на события
+#### Подписка на спотовые цены
 
 ```python
 async def subscribe_to_spots(client, account_id, symbol_ids):
-    request = ProtoOASubscribeSpotsReq()
-    request.ctidTraderAccountId = account_id
-    request.symbolId.extend(symbol_ids)
+    # Подписка
+    await client.send_subscribe_spots_req(account_id, symbol_ids)
     
-    await client.send_request(request)
+    # Установка обработчика сообщений
+    def on_message(client, message):
+        if hasattr(message, 'payload') and message.payloadType == ProtoOAPayloadType.PROTO_OA_SPOT_EVENT:
+            # Обработка спотовой цены
+            print(f"Новая цена: {message}")
     
-    # Обработка входящих сообщений
-    async for message in client.message_stream():
-        if message.payloadType == ProtoOAPayloadType.PROTO_OA_SPOT_EVENT:
-            spot_event = ProtoOASpotEvent()
-            spot_event.ParseFromString(message.payload)
-            print(f"Новая цена: {spot_event}")
+    client.set_message_received_callback(on_message)
 ```
 
 ## 🔧 Разработка
@@ -184,6 +198,40 @@ ruff check .
 mypy ctrader_open_api_async
 ```
 
+## 🔐 OAuth процесс согласно документации
+
+Согласно [официальной документации cTrader](https://help.ctrader.com/open-api/account-authentication/), процесс авторизации включает:
+
+### 1. Получение authorization code
+
+Пользователь перенаправляется на:
+```
+https://openapi.ctrader.com/apps/auth?client_id={CLIENT_ID}&redirect_uri={REDIRECT_URI}&response_type=code&scope={SCOPE}
+```
+
+### 2. Обмен кода на access token
+
+POST запрос к `https://openapi.ctrader.com/apps/token` с параметрами:
+- `grant_type=authorization_code`
+- `code={AUTHORIZATION_CODE}`
+- `redirect_uri={REDIRECT_URI}`
+- `client_id={CLIENT_ID}`
+- `client_secret={CLIENT_SECRET}`
+
+### 3. Использование access token
+
+- `ProtoOAApplicationAuthReq` - аутентификация приложения
+- `ProtoOAGetAccountListByAccessTokenReq` - получение списка аккаунтов
+- `ProtoOAAccountAuthReq` - авторизация торгового аккаунта
+
+## ⚠️ Миграция с версии 1.x
+
+Если вы используете версию 1.x, обратите внимание на изменения:
+
+1. **OAuth обязателен** - теперь нужно проходить полный OAuth поток
+2. **Новые методы API** - используйте методы `send_*_req` вместо создания сообщений вручную
+3. **Async context managers** - рекомендуется использовать `async with`
+
 ## 🤝 Вклад в проект
 
 Мы приветствуем вклад в развитие проекта! Пожалуйста:
@@ -216,9 +264,12 @@ mypy ctrader_open_api_async
 - 🐛 [Сообщить об ошибке](https://github.com/paxelcool/ctrader-open-api-async/issues)
 - 💡 [Предложить улучшение](https://github.com/paxelcool/ctrader-open-api-async/issues)
 - 📖 [Документация](https://github.com/paxelcool/ctrader-open-api-async/blob/main/README.md)
+- 🔍 [Примеры OAuth](https://github.com/paxelcool/ctrader-open-api-async/tree/main/examples)
 
 ## 🔗 Полезные ссылки
 
 - [cTrader Open API Documentation](https://help.ctrader.com/open-api/)
+- [cTrader ID Portal](https://id.ctrader.com/) (для создания приложений)
+- [OAuth 2.0 Authentication Flow](https://help.ctrader.com/open-api/account-authentication/)
 - [Оригинальная библиотека OpenApiPy](https://github.com/spotware/OpenApiPy)
 - [Python asyncio документация](https://docs.python.org/3/library/asyncio.html)

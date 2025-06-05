@@ -1,5 +1,15 @@
 #!/usr/bin/env python3
-"""Базовый пример использования cTrader Open API Async."""
+"""
+Базовый пример использования cTrader Open API Async.
+
+⚠️ ВНИМАНИЕ: Этот пример устарел и не учитывает OAuth авторизацию!
+
+Для правильной реализации OAuth авторизации используйте:
+- oauth_auth_example.py - полный автоматический пример
+- simple_oauth_example.py - упрощенный пример с ручным вводом
+
+Подробнее: https://help.ctrader.com/open-api/account-authentication/
+"""
 
 import asyncio
 import logging
@@ -17,7 +27,11 @@ logger = logging.getLogger(__name__)
 
 
 class CTraderExample:
-    """Пример класса для работы с cTrader API."""
+    """
+    Пример класса для работы с cTrader API.
+    
+    ⚠️ УСТАРЕВШИЙ - не поддерживает OAuth авторизацию!
+    """
 
     def __init__(
         self,
@@ -30,8 +44,8 @@ class CTraderExample:
 
         Args:
             client_id: ID приложения
-            client_secret: Секрет приложения
-            access_token: Токен доступа
+            client_secret: Секрет приложения  
+            access_token: Токен доступа (должен быть получен через OAuth!)
             is_live: Использовать live сервер (по умолчанию demo)
         """
         self.client_id = client_id
@@ -52,15 +66,13 @@ class CTraderExample:
         """
         try:
             # Подключение
-            await self.client.connect()
+            await self.client.start_service()
             logger.info("Подключено к cTrader Open API")
 
             # Аутентификация приложения
-            auth_request = ProtoOAApplicationAuthReq()
-            auth_request.clientId = self.client_id
-            auth_request.clientSecret = self.client_secret
-
-            auth_response = await self.client.send_request(auth_request)
+            auth_response = await self.client.send_application_auth_req(
+                self.client_id, self.client_secret
+            )
             logger.info("Аутентификация приложения успешна")
 
             return True
@@ -76,16 +88,21 @@ class CTraderExample:
             Список аккаунтов
         """
         try:
-            request = ProtoOAGetAccountListByAccessTokenReq()
-            request.accessToken = self.access_token
-
-            response = await self.client.send_request(request)
+            response = await self.client.send_get_account_list_by_access_token_req(
+                self.access_token
+            )
             accounts = list(response.ctidTraderAccount)
 
             if accounts:
                 self.account_id = accounts[0].ctidTraderAccountId
                 logger.info(f"Найдено аккаунтов: {len(accounts)}")
                 logger.info(f"Используется аккаунт ID: {self.account_id}")
+
+                # Авторизация торгового аккаунта
+                await self.client.send_account_auth_req(
+                    self.account_id, self.access_token
+                )
+                logger.info("Авторизация торгового аккаунта успешна")
 
             return accounts
 
@@ -104,10 +121,7 @@ class CTraderExample:
             return []
 
         try:
-            request = ProtoOASymbolsListReq()
-            request.ctidTraderAccountId = self.account_id
-
-            response = await self.client.send_request(request)
+            response = await self.client.send_symbols_list_req(self.account_id)
             symbols = list(response.symbol)
 
             logger.info(f"Найдено символов: {len(symbols)}")
@@ -135,11 +149,7 @@ class CTraderExample:
             return
 
         try:
-            request = ProtoOASubscribeSpotsReq()
-            request.ctidTraderAccountId = self.account_id
-            request.symbolId.extend(symbol_ids)
-
-            await self.client.send_request(request)
+            await self.client.send_subscribe_spots_req(self.account_id, symbol_ids)
             logger.info(f"Подписка на спот цены для символов: {symbol_ids}")
 
         except Exception as e:
@@ -153,29 +163,25 @@ class CTraderExample:
         """
         logger.info(f"Прослушивание спот цен в течение {duration} секунд...")
 
-        end_time = asyncio.get_event_loop().time() + duration
+        # Установка обработчика сообщений
+        def on_message(client, message):
+            if hasattr(message, 'payloadType') and hasattr(message, 'payload'):
+                # Простая проверка типа сообщения (без полного парсинга)
+                logger.info(f"Получено сообщение типа: {message.payloadType}")
 
-        try:
-            async for message in self.client.message_stream():
-                if asyncio.get_event_loop().time() > end_time:
-                    break
+        self.client.set_message_received_callback(on_message)
 
-                if message.payloadType == ProtoOAPayloadType.PROTO_OA_SPOT_EVENT:
-                    spot_event = ProtoOASpotEvent()
-                    spot_event.ParseFromString(message.payload)
-
-                    logger.info(
-                        f"Спот цена - Символ ID: {spot_event.symbolId}, "
-                        f"Bid: {spot_event.bid}, Ask: {spot_event.ask}"
-                    )
-
-        except Exception as e:
-            logger.error(f"Ошибка при прослушивании спот цен: {e}")
+        # Ожидание в течение указанного времени
+        await asyncio.sleep(duration)
 
     async def disconnect(self) -> None:
         """Отключение от API."""
         try:
-            await self.client.disconnect()
+            if self.account_id:
+                await self.client.send_account_logout_req(self.account_id)
+                logger.info("Выход из торгового аккаунта")
+
+            await self.client.stop_service()
             logger.info("Отключено от cTrader Open API")
         except Exception as e:
             logger.error(f"Ошибка отключения: {e}")
@@ -183,16 +189,37 @@ class CTraderExample:
 
 async def main():
     """Основная функция примера."""
+    
+    print("=" * 80)
+    print("⚠️  ВНИМАНИЕ: УСТАРЕВШИЙ ПРИМЕР!")
+    print("=" * 80)
+    print("Этот пример НЕ реализует правильную OAuth авторизацию!")
+    print("Согласно документации cTrader API, необходимо использовать OAuth 2.0 поток.")
+    print("")
+    print("📋 Для правильной реализации используйте:")
+    print("   • oauth_auth_example.py - полный автоматический пример")
+    print("   • simple_oauth_example.py - упрощенный пример")
+    print("")
+    print("📖 Документация: https://help.ctrader.com/open-api/account-authentication/")
+    print("=" * 80)
+    
+    # Ждем подтверждение от пользователя
+    user_input = input("\nПродолжить выполнение устаревшего примера? (y/N): ").strip().lower()
+    if user_input not in ['y', 'yes', 'да']:
+        print("Используйте oauth_auth_example.py для правильной авторизации!")
+        return
+
     # ВАЖНО: Замените эти значения на ваши реальные данные
     CLIENT_ID = "your_client_id"
     CLIENT_SECRET = "your_client_secret"
-    ACCESS_TOKEN = "your_access_token"
+    ACCESS_TOKEN = "your_access_token"  # Должен быть получен через OAuth!
     IS_LIVE = False  # True для live сервера, False для demo
 
     if CLIENT_ID == "your_client_id":
         logger.error(
             "Пожалуйста, укажите ваши реальные CLIENT_ID, CLIENT_SECRET и ACCESS_TOKEN"
         )
+        logger.error("ACCESS_TOKEN должен быть получен через OAuth авторизацию!")
         return
 
     example = CTraderExample(CLIENT_ID, CLIENT_SECRET, ACCESS_TOKEN, IS_LIVE)
